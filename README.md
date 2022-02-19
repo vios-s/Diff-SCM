@@ -1,2 +1,2 @@
 # Diff-SCM
-Code for Diff-SCM paper
+Code for the Diff-SCM paper coming soon!
