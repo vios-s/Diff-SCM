@@ -10,11 +10,10 @@ import math
 
 import numpy as np
 import torch as th
+from tqdm.auto import tqdm
 
 from .nn import mean_flat
 from .losses import normal_kl, discretized_gaussian_log_likelihood
-from models.unet import ImageConditionalUNet
-from utils import dist_util
 
 
 def get_named_beta_schedule(schedule_name, num_diffusion_timesteps):
@@ -311,7 +310,7 @@ class GaussianDiffusion:
 
         def process_xstart(x):
             if denoised_fn is not None:
-                x = denoised_fn(x)
+                x = denoised_fn(x,**model_kwargs)
             if clip_denoised:
                 return x.clamp(-1, 1)
             return x
@@ -328,6 +327,8 @@ class GaussianDiffusion:
                 pred_xstart = process_xstart(
                     self._predict_xstart_from_eps(x_t=x, t=t, eps=model_output)
                 )
+                #pred_xstart = self._predict_xstart_from_eps(x_t=x, t=t, eps=process_xstart(model_output)) didnt work
+                
             model_mean, _, _ = self.q_posterior_mean_variance(
                 x_start=pred_xstart, x_t=x, t=t
             )
@@ -650,6 +651,7 @@ class GaussianDiffusion:
 
         return {"sample": mean_pred, "pred_xstart": out["pred_xstart"]}
 
+
     def ddim_sample_loop(
             self,
             model,
@@ -663,38 +665,15 @@ class GaussianDiffusion:
             progress=False,
             reconstruction: bool = False,
             eta=0.0,
+            sampling_progression_ratio = 1.0
     ):
         """
         Generate samples from the model using DDIM.
 
         Same usage as p_sample_loop().
         """
-        if progress:
-            final = []
-        else:
-            final = None
-        # Go from x_0 to x_T using reverse ddim
-        if reconstruction:
-            for sample in self.ddim_sample_loop_progressive(
-                    model,
-                    shape,
-                    noise=noise,
-                    clip_denoised=clip_denoised,
-                    denoised_fn=denoised_fn,
-                    cond_fn=cond_fn,
-                    model_kwargs=model_kwargs,
-                    device=device,
-                    progress=progress,
-                    eta=eta,
-                    reverse=True,
-            ):
-                if progress:
-                    final.append(sample)
-                else:
-                    final = sample
-            noise = final[-1]["sample"]
-        else:
-            noise = None
+        
+        final = [] if progress else None
 
         for sample in self.ddim_sample_loop_progressive(
                 model,
@@ -705,66 +684,17 @@ class GaussianDiffusion:
                 cond_fn=cond_fn,
                 model_kwargs=model_kwargs,
                 device=device,
-                progress=progress,
                 eta=eta,
+                reverse=reconstruction,
+                sampling_progression_ratio = sampling_progression_ratio
         ):
             if progress:
                 final.append(sample)
             else:
                 final = sample
 
-        if progress:
-            return final
-        else:
-            return final["sample"]
-    
-
-    def diffscm_counterfactual_sample(
-            self,
-            model,
-            shape,
-            factual_image,
-            anticausal_classifier_fn,
-            model_kwargs=None,
-            device=None,
-            eta=0.0,
-    ):
-        """
-        Generate counterfactual samples using determinist (if eta = 0) forward diffusion and subsequent reverse diffusion DDIM.
-        """
-        # Go from x_0 to x_T using reverse ddim
-        for sample in self.ddim_sample_loop_progressive(
-                model,
-                shape,
-                noise=factual_image,
-                clip_denoised=True,
-                denoised_fn=None,
-                cond_fn=None,# anticausal_classifier_fn,
-                model_kwargs=model_kwargs,
-                device=device,
-                progress=True,
-                eta=eta,
-                reverse=True,
-        ):
-            final = sample
-        exogenous_noise = final["sample"]
-
-        for sample in self.ddim_sample_loop_progressive(
-                model,
-                shape,
-                noise=exogenous_noise,
-                clip_denoised=True,
-                denoised_fn=None,
-                cond_fn=anticausal_classifier_fn,
-                model_kwargs=model_kwargs,
-                device=device,
-                progress=True,
-                eta=eta,
-                reverse=False,
-        ):
-            final = sample
-
-        return final["sample"]
+        final_output = "sample"# if denoised_fn is None else "pred_xstart"
+        return (final[-1][final_output], final) if progress else (final[final_output], [final])
 
     def ddim_sample_loop_progressive(
             self,
@@ -776,9 +706,9 @@ class GaussianDiffusion:
             cond_fn=None,
             model_kwargs=None,
             device=None,
-            progress=False,
             eta=0.0,
             reverse: bool = False,
+            sampling_progression_ratio : float = 1
     ):
         """
         Use DDIM to sample from the model and yield intermediate samples from
@@ -791,19 +721,19 @@ class GaussianDiffusion:
         assert isinstance(shape, (tuple, list))
 
         indices = list(range(self.num_timesteps))[::-1]
+        # start diffusion from a particular point or run it only up to a point
+        indices = indices[:int(len(indices)*sampling_progression_ratio)]
+
         if reverse:
             indices = indices[::-1]
             assert noise is not None, "Reverse DDIM requires input noise as an image"
-
+    
         if noise is not None:
             img = noise
         else:
             img = th.randn(*shape, device=device)
-        if progress:
-            # Lazy import so that we don't depend on tqdm.
-            from tqdm.auto import tqdm
-
-            indices = tqdm(indices)
+        
+        indices = tqdm(indices)
 
         for i in indices:
             t = th.tensor([i] * shape[0], device=device)
@@ -1040,3 +970,27 @@ def _extract_into_tensor(arr, timesteps, broadcast_shape):
     while len(res.shape) < len(broadcast_shape):
         res = res[..., None]
     return res.expand(broadcast_shape)
+
+import torch
+import torch.nn.functional as F
+import random
+def add_noise(x):
+    # I use 16x16 to generate noise for 128x128 original resolution. 
+    ns = torch.normal(mean=torch.zeros(x.shape[0], x.shape[1], 16, 16)).to(x.device)
+    res = F.upsample_bilinear(ns, size=(128, 128))
+    # Smoothing after makes the noise look nicer/more natural but might not be necessary
+    res = F.avg_pool2d(res, kernel_size=9, stride=1, padding=4) 
+    # Roll randomly so the distribution of the noise "centers" is not so regular after upsamling.
+    # Also might be unnecessary.
+    roll_x = random.choice(range(128))
+    roll_y = random.choice(range(128))
+    ns = torch.roll(ns, shifts=[roll_x, roll_y], dims=[-2, -1])
+    # Normalise to whatever std you want, 0.1 works well for me.
+    # Also shouldn't do .mean .std across
+    # the batch if applying noise to the whole batch.
+    ns = (ns - ns.mean()) / ns.std() * 0.1
+    # I only apply the noise in the foreground (brain) since adding noise
+    # to the black background is detrimental to the model I think.
+    mask = x.sum(dim=1, keepdim=True) > 0
+    ns *= mask
+    return x + ns

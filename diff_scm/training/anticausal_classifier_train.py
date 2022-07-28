@@ -10,22 +10,23 @@ import torch.nn.functional as F
 from torch.nn.parallel.distributed import DistributedDataParallel as DDP
 from torch.optim import AdamW
 import torch
-
+import torchvision
+import argparse
 from pathlib import Path
 import sys
 sys.path.append(str(Path.cwd()))
 
-from configs import default_mnist_configs
-from utils import logger, dist_util
-from utils.script_util import create_anti_causal_predictor, create_gaussian_diffusion
-from utils.fp16_util import MixedPrecisionTrainer
-from models.resample import create_named_schedule_sampler
-from training.train_util import parse_resume_step_from_filename, log_loss_dict
-from datasets import loader
+from diff_scm.configs import get_config
+from diff_scm.utils import logger, dist_util
+from diff_scm.utils.script_util import create_anti_causal_predictor, create_gaussian_diffusion
+from diff_scm.utils.fp16_util import MixedPrecisionTrainer
+from diff_scm.models.resample import create_named_schedule_sampler
+from diff_scm.training.train_util import parse_resume_step_from_filename, log_loss_dict
+from diff_scm.datasets import loader
 
 
-def main():
-    config = default_mnist_configs.get_default_configs()
+def main(args):
+    config = get_config.file_from_dataset(args.dataset)
 
     dist_util.setup_dist()
     logger.configure(Path(config.experiment_name) / ("classifier_train_" + "_".join(config.classifier.label)),
@@ -43,10 +44,10 @@ def main():
         )
 
     logger.log("creating data loader...")
-    data = loader.get_data_loader(config.data.path, config.classifier.training.batch_size, split_set='train',
-                                  which_label=config.classifier.label)
-    val_data = loader.get_data_loader(config.data.path, config.classifier.training.batch_size, split_set='val',
-                                      which_label=config.classifier.label)
+
+    data = loader.get_data_loader(args.dataset, config, split_set='train', generator = True) 
+    val_data = loader.get_data_loader(args.dataset, config, split_set='val', generator = True)
+
     logger.log("training...")
 
     resume_step = 0
@@ -75,7 +76,7 @@ def main():
         output_device=dist_util.dev(),
         broadcast_buffers=False,
         bucket_cap_mb=128,
-        find_unused_parameters=False,
+        find_unused_parameters=True,
     )
 
     logger.log(f"creating optimizer...")
@@ -94,12 +95,10 @@ def main():
 
     def forward_backward_log(data_loader, prefix="train"):
         data_dict = next(data_loader)
-        labels = {}
-        for label_name in config.classifier.label:
-            assert label_name in list(data_dict.keys()), f'label {label_name} are not in data_dict{data_dict.keys()}'
-            labels[label_name] = data_dict[label_name].to(dist_util.dev())
-
         batch = data_dict["image"].to(dist_util.dev())
+        if args.dataset == "brats":
+            batch = torchvision.transforms.Resize(size=256)(batch)
+        labels = data_dict["y"].to(dist_util.dev())
 
         # Noisy images
         if config.classifier.training.noised:
@@ -110,6 +109,7 @@ def main():
         loss_dict = get_predictor_loss(model, labels, batch, t)
         loss = torch.stack(list(loss_dict.values())).sum()
         losses = {f"{prefix}_{loss_name}": loss_value.detach() for loss_name, loss_value in loss_dict.items()}
+        # losses[f"{prefix}_acc@1"] = compute_top_k(logits, labels, k=1, reduction="none")
         log_loss_dict(diffusion, t, losses)
 
         del losses
@@ -154,7 +154,16 @@ def main():
 def get_predictor_loss(model, labels, batch, t):
     output = model(batch, timesteps=t)
     loss_dict = {}
-    loss_dict["loss"] = F.cross_entropy(output, list(labels.values())[0], reduction="mean")
+    '''if isinstance(output, Dict):
+        assert len(output["latents"]) == 2
+        scale = 0.05
+        loss_dict["hsic"] = scale * hsic_normalized(output["latents"][0], output["latents"][1], False)
+        for label_name, label_value in labels.items():
+            loss_dict[label_name] = torch.nn.BCELoss()(torch.nn.Sigmoid()(output[label_name]), label_value, reduction="mean")
+    else:
+        # loss_dict["loss"] = torch.nn.BCELoss()(torch.nn.Sigmoid()(output), labels["gt"])
+        # loss_dict["loss"] = F.cross_entropy(output, list(labels.values())[0], reduction="mean")'''
+    loss_dict["loss"] = F.cross_entropy(output, labels)
     return loss_dict
 
 
@@ -189,37 +198,10 @@ def split_microbatches(microbatch, *args):
         for i in range(0, bs, microbatch):
             yield tuple(x[i: i + microbatch] if x is not None else None for x in args)
 
-
-"""
-         for i, (sub_batch, sub_labels, sub_t) in enumerate(
-     split_microbatches(config.classifier.training.microbatch, batch, labels, t)
-):
- if not config.classifier.noise_conditioning:
-     sub_t = None
-
- if prefix == "train" and config.classifier.training.adversarial_training:
-     sub_batch_perturbed = adversarial_attacker.perturb(model, sub_batch, sub_labels, sub_t)
-     logits_perturbed = model(sub_batch_perturbed, timesteps=sub_t)
-     loss += F.cross_entropy(logits_perturbed, sub_labels, reduction="none")
-     loss /= 2
-     adversarial_sub_labels = get_random_vector_excluding(sub_labels)
- adversarial_sub_batch = fgsm_attack(sub_batch, sub_batch.grad.data)
- adversarial_logits = model(adversarial_sub_batch, timesteps=sub_t)
- """
-
-
-# FGSM attack code
-def fgsm_attack(original_batch, data_grad, epsilon: float = 0.15):
-    epsilon = th.tensor(epsilon).to(data_grad.device)
-    # Collect the element-wise sign of the data gradient
-    sign_data_grad = data_grad.sign()
-    # Create the perturbed image by adjusting each pixel of the input image
-    perturbed_batch = original_batch + epsilon * sign_data_grad
-    # Adding clipping to maintain [-1,1] range
-    perturbed_batch = th.clamp(perturbed_batch, -1, 1)
-    # Return the perturbed image
-    return perturbed_batch
-
-
 if __name__ == "__main__":
-    main()
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--dataset", help="mnist or brats", type=str)
+    args = parser.parse_args()
+    print(args.dataset)
+    main(args)

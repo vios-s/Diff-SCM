@@ -1,14 +1,39 @@
 import argparse
 import ml_collections
 
-from models import gaussian_diffusion as gd
-from models.respace import SpacedDiffusion, space_timesteps
-from models.unet import UNetModel, EncoderUNetModel, ImageConditionalUNet, AntiCausalMechanism
+from diff_scm.utils import dist_util
+from diff_scm.models import gaussian_diffusion as gd
+from diff_scm.models import unet
+from diff_scm.models.respace import SpacedDiffusion, space_timesteps
+
+
+def get_models_from_config(config):
+    diffusion = create_gaussian_diffusion(config)
+    model = create_score_model(config)
+    model.load_state_dict(
+        dist_util.load_state_dict(config.sampling.model_path, map_location=dist_util.dev())
+    )
+    model.to(dist_util.dev())
+    if config.score_model.use_fp16:
+        model.convert_to_fp16()
+    model.eval()
+    
+    if config.sampling.classifier_scale != 0:
+        classifier = create_anti_causal_predictor(config)
+        classifier.load_state_dict(
+            dist_util.load_state_dict(config.sampling.classifier_path, map_location=dist_util.dev())
+        )
+        classifier.to(dist_util.dev())
+        if config.classifier.classifier_use_fp16:
+            classifier.convert_to_fp16()
+        classifier.eval()
+    else:
+        classifier = None
+    return classifier, diffusion, model
 
 
 def create_score_model(config: ml_collections.ConfigDict):
-    return UNetModel(
-        image_size=config.score_model.image_size,
+    return unet.UNetModel(
         in_channels=config.score_model.num_input_channels,
         model_channels=config.score_model.num_channels,
         out_channels=(
@@ -26,39 +51,14 @@ def create_score_model(config: ml_collections.ConfigDict):
         num_heads_upsample=config.score_model.num_heads_upsample,
         use_scale_shift_norm=config.score_model.use_scale_shift_norm,
         resblock_updown=config.score_model.resblock_updown,
-        use_new_attention_order=config.score_model.use_new_attention_order,
+        image_level_cond=config.score_model.image_level_cond,
     )
-
-
-def create_image_cond_score_model(config: ml_collections.ConfigDict):
-    return ImageConditionalUNet(
-        image_size=config.score_model.image_size,
-        in_channels=config.score_model.num_input_channels,
-        model_channels=config.score_model.num_channels,
-        out_channels=(
-            config.score_model.num_input_channels
-            if not config.score_model.learn_sigma else 2 * config.score_model.num_input_channels),
-        num_res_blocks=config.score_model.num_res_blocks,
-        attention_resolutions=tuple(config.score_model.attention_ds),
-        dropout=config.score_model.dropout,
-        channel_mult=config.score_model.channel_mult,
-        num_classes=(config.score_model.num_classes if config.score_model.class_cond else None),
-        use_checkpoint=False,
-        use_fp16=False,
-        num_heads=config.score_model.num_heads,
-        num_head_channels=config.score_model.num_head_channels,
-        num_heads_upsample=config.score_model.num_heads_upsample,
-        use_scale_shift_norm=config.score_model.use_scale_shift_norm,
-        resblock_updown=config.score_model.resblock_updown,
-        use_new_attention_order=config.score_model.use_new_attention_order,
-    )
-
 
 def create_anti_causal_predictor(config):
     enc = []
     nb_variables = len(config.classifier.label)
     for i in range(nb_variables):
-        enc.append(EncoderUNetModel(
+        enc.append(unet.EncoderUNetModel(
             image_size=config.classifier.image_size,
             in_channels=config.classifier.in_channels,
             model_channels=config.classifier.classifier_width,
@@ -75,10 +75,11 @@ def create_anti_causal_predictor(config):
     if nb_variables == 1:
         model = enc[0]
     else:
-        model = AntiCausalMechanism(encoders=enc, out_labels=config.classifier.label,
+        model = unet.AntiCausalMechanism(encoders=enc, out_labels=config.classifier.label,
                                     out_channels=config.classifier.out_channels)
     print(model)
     return model
+
 
 
 def create_gaussian_diffusion(config):

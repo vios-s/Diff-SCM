@@ -9,49 +9,50 @@ import os
 def get_default_configs():
     config = ml_collections.ConfigDict()
 
-    dataset = "MNIST"
-    config.experiment_name = "exp_01_" + dataset
+    config.dataset_name = "MNIST"
+    config.experiment_name = "exp_02_" + config.dataset_name
     
     use_gpus = "0"  # e.g. "0,1,2"
     os.environ["CUDA_VISIBLE_DEVICES"] = use_gpus
     # data
     config.data = data = ml_collections.ConfigDict()
-    data.path = Path.cwd()
-
+    data.path = Path("/remote/rds/groups/idcom_imaging/data/Brain/BRATS/") / config.dataset_name
+    experiment_path = r"../experiment_data/"
     ## Diffusion parameters
     config.diffusion = diffusion = ml_collections.ConfigDict()
     diffusion.steps = 1000
     diffusion.learn_sigma = False
     diffusion.sigma_small = False
-    diffusion.noise_schedule = "cosine"
+    diffusion.noise_schedule = "linear"
     # if use_kl AND rescale_learned_sigmas are False, it will use MSE
     diffusion.use_kl = False
     diffusion.rescale_learned_sigmas = False
     diffusion.predict_xstart = False
     diffusion.rescale_timesteps = False
-    diffusion.timestep_respacing = "ddim1000"  
+    diffusion.timestep_respacing = "ddim100"  
     diffusion.conditioning_noise = "constant"  
 
     ## score model config
     config.score_model = score_model = ml_collections.ConfigDict()
     score_model.image_size = 28
+    score_model.classifier_free_cond = False
     score_model.num_input_channels = 1
-    score_model.num_channels = 64
+    score_model.num_channels = 32
     score_model.num_res_blocks = 1
     score_model.num_heads = 1
     score_model.num_heads_upsample = -1
     score_model.num_head_channels = -1
     score_model.learn_sigma = diffusion.learn_sigma
     score_model.attention_resolutions = ""  # 16
-
+    
     attention_ds = []
     if score_model.attention_resolutions != "":
         for res in score_model.attention_resolutions.split(","):
             attention_ds.append(score_model.image_size // int(res))
     score_model.attention_ds = attention_ds
 
-    score_model.channel_mult = (1, 2, 4)
-    score_model.dropout = 0.0
+    score_model.channel_mult = (1, 2, 2)
+    score_model.dropout = 0.1
     score_model.class_cond = False
     score_model.use_checkpoint = False
     score_model.use_scale_shift_norm = True
@@ -59,6 +60,7 @@ def get_default_configs():
     score_model.use_fp16 = False
     score_model.use_new_attention_order = False
     score_model.num_classes = 10
+    score_model.image_level_cond = False
 
     # score model training
     config.score_model.training = training_score = ml_collections.ConfigDict()
@@ -75,6 +77,8 @@ def get_default_configs():
     training_score.resume_checkpoint = ""
     training_score.use_fp16 = score_model.use_fp16
     training_score.fp16_scale_growth = 1e-3
+    training_score.conditioning_variable = "y"
+    training_score.cond_dropout_rate = 0.0
 
     ## classifier config
 
@@ -116,18 +120,21 @@ def get_default_configs():
     training_class.classifier_use_fp16 = score_model.use_fp16
 
     config.sampling = sampling = ml_collections.ConfigDict()
-    sampling.counterfactual_class = 5
     sampling.clip_denoised = True
+    sampling.dynamic_sampling = True
+    sampling.progress = False
     sampling.num_samples = 100
     sampling.batch_size = 100
     sampling.use_ddim = True
     sampling.reconstruction = True
     sampling.eta = 0.0
     sampling.image_conditional = False
-    sampling.label_of_intervention = "class" 
-    sampling.model_path = config.experiment_name + "/score_train/model030000.pt"
-    sampling.classifier_path = config.experiment_name + "/classifier_train_" + "_".join(config.classifier.label) + "/model003000.pt"
-    sampling.classifier_scale = 0.7
+    sampling.label_of_intervention = "y" 
+    sampling.model_path = experiment_path + config.experiment_name + "/score_train/model003000.pt"
+    sampling.classifier_path = experiment_path + config.experiment_name + "/classifier_train_" + "_".join(config.classifier.label) + "/model001000.pt"
+    sampling.classifier_scale = 1.0
+    sampling.target_class = 5    
+    sampling.sampling_progression_ratio = 0.75
     config.seed = 42
     config.device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
 

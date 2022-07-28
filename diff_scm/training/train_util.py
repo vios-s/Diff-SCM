@@ -9,12 +9,14 @@ from torch.nn.parallel.distributed import DistributedDataParallel as DDP
 from torch.optim import AdamW
 from torch.utils.tensorboard import SummaryWriter
 import torchvision
-
+from typing import Dict
 import matplotlib.pyplot as plt
-from utils import dist_util, logger
-from utils.fp16_util import MixedPrecisionTrainer
-from models.nn import update_ema
-from models.resample import LossAwareSampler, UniformSampler
+
+from diff_scm.utils import dist_util, logger
+from diff_scm.utils.fp16_util import MixedPrecisionTrainer
+from diff_scm.models.nn import update_ema
+from diff_scm.models.resample import LossAwareSampler, UniformSampler
+
 
 # For ImageNet experiments, this was a good default value.
 # We found that the lg_loss_scale quickly climbed to
@@ -42,6 +44,10 @@ class TrainLoop:
             schedule_sampler=None,
             weight_decay=0.0,
             lr_anneal_steps=0,
+            main_data_indentifier: str = "image",
+            cond_dropout_rate: float = 0.0,
+            conditioning_variable: str = "y",
+            iterations: int = 70e3,
     ):
         self.model = model
         self.diffusion = diffusion
@@ -63,8 +69,12 @@ class TrainLoop:
         self.schedule_sampler = schedule_sampler or UniformSampler(diffusion)
         self.weight_decay = weight_decay
         self.lr_anneal_steps = lr_anneal_steps
+        self.main_data_indentifier = main_data_indentifier
+        self.conditioning_variable = conditioning_variable
+        self.cond_dropout_rate = cond_dropout_rate
+        self.iterations = iterations
 
-        #self.writer = SummaryWriter(logger.get_current() / 'tensorboard')
+        # self.writer = SummaryWriter(logger.get_current() / 'tensorboard')
         self.step = 0
         self.resume_step = 0
         self.global_batch = self.batch_size * dist.get_world_size()
@@ -102,7 +112,7 @@ class TrainLoop:
                 output_device=dist_util.dev(),
                 broadcast_buffers=False,
                 bucket_cap_mb=128,
-                find_unused_parameters=False,
+                find_unused_parameters=True,
             )
         else:
             if dist.get_world_size() > 1:
@@ -156,8 +166,11 @@ class TrainLoop:
             )
             self.opt.load_state_dict(state_dict)
 
-    def run_loop(self, nb_iterations):
-        while self.step < nb_iterations:
+    def run_loop(self):
+        while (
+                not self.lr_anneal_steps
+                or self.step + self.resume_step < self.iterations
+        ):
             data_dict = next(self.data)
             self.run_step(data_dict)
             if self.step % self.save_interval == 0:
@@ -168,7 +181,7 @@ class TrainLoop:
                     self.forward_backward(val_data_dict, phase="val")
                 logger.dumpkvs()
             self.step += 1
-            # Save the last checkpoint if it wasn't already saved.
+        # Save the last checkpoint if it wasn't already saved.
         if (self.step - 1) % self.save_interval != 0:
             self.save()
 
@@ -180,14 +193,33 @@ class TrainLoop:
         self._anneal_lr()
         self.log_step()
 
+    def conditioning_dropout(self, model_conditionals: Dict):
+        '''         
+        By setting the self.conditioning_variable to self.num_classes,
+            we are telling the Embedding layer in the model to use non-class informative embedding (padding idx default to 0).
+        '''
+
+        idx2drop = int(model_conditionals["y"].shape[0]*self.cond_dropout_rate)
+        model_conditionals["y"][th.randint(model_conditionals["y"].shape[0],(idx2drop,))] = self.model.num_classes
+        
+        return model_conditionals
+        
+
+
     def forward_backward(self, data_dict, phase: str = "train"):
+        
+        # self.main_data_indentifier = "image"
+        batch = data_dict.pop(self.main_data_indentifier)
+        model_conditionals = data_dict
+
         assert phase in ["train", "val"]
         if phase == "train":
             self.ddp_model.train()
+            if self.cond_dropout_rate != 0:
+                model_conditionals = self.conditioning_dropout(model_conditionals)
         else:
             self.ddp_model.eval()
-
-        batch = data_dict["image"]
+        
         model_conditionals = data_dict
         self.mp_trainer.zero_grad()
         for i in range(0, batch.shape[0], self.microbatch):
