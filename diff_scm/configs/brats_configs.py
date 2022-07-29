@@ -80,7 +80,6 @@ def get_default_configs():
     training_score.fp16_scale_growth = 1e-3
     training_score.conditioning_variable = "gt"
     training_score.iterations = 50e3
-    
 
     ## classifier config
 
@@ -136,7 +135,7 @@ def get_default_configs():
     sampling.use_ddim = True
     sampling.reconstruction = True
     sampling.eta = 0.0
-    sampling.label_of_intervention = "gt"  # thickness
+    sampling.label_of_intervention = "gt"
     sampling.conditioning_str = f"icond{config.score_model.image_level_cond}_ccond{config.score_model.class_cond}"
     sampling.model_path =  experiment_path + config.experiment_name + f"/score_train_{sampling.conditioning_str}/model050000.pt"
     sampling.classifier_path = experiment_path + config.experiment_name + "/classifier_train_" + "_".join(
@@ -148,7 +147,6 @@ def get_default_configs():
     sampling.detection = True
     sampling.source_class = 1 # int in range [0, num_class-1]
     sampling.target_class = 0 # int in range [0, num_class-1]
-    #sampling.sampling_str = f"sampling_counterfactual_{sampling.conditioning_str}_nsamples{sampling.num_samples}_cfs{sampling.norm_cond_scale}_cs{sampling.classifier_scale}_spr{sampling.sampling_progression_ratio}"
     sampling.sampling_str = f"sampling_{sampling.conditioning_str}_nsamples{sampling.num_samples}_cfs{sampling.norm_cond_scale}_cs{sampling.classifier_scale}_spr{sampling.sampling_progression_ratio}"
     sampling.progress = True
     config.seed = 1

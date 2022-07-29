@@ -8,6 +8,48 @@ import numpy as np
 from diff_scm.utils import logger, dist_util
 
 
+def estimate_counterfactual(config, diffusion, cond_fn, model_fn, model_classifier_free_fn, denoised_fn, data_dict):
+    model_kwargs, init_image = get_input_data(config, data_dict)
+    # DDIM loop in reverse time order for inferring exogenous noise (image latent space)    
+    exogenous_noise, abduction_progression = diffusion.ddim_sample_loop(
+            model_fn,
+            (config.sampling.batch_size,
+                config.score_model.num_input_channels,
+                config.score_model.image_size,
+                config.score_model.image_size),
+            clip_denoised=config.sampling.clip_denoised,
+            model_kwargs=model_kwargs,
+            denoised_fn = denoised_fn if config.sampling.dynamic_sampling else None,
+            noise=init_image,
+            cond_fn=None,
+            device=dist_util.dev(),
+            progress=config.sampling.progress,
+            eta=config.sampling.eta,
+            reconstruction=True,
+            sampling_progression_ratio = config.sampling.sampling_progression_ratio
+        )
+    init_image = exogenous_noise
+    # DDIM diffusion inference  with conditioning (intervention), starting from a latent image instead of random noise
+    counterfactual_image, diffusion_progression = diffusion.ddim_sample_loop(
+            model_classifier_free_fn if config.score_model.classifier_free_cond else model_fn,
+            (config.sampling.batch_size,
+                config.score_model.num_input_channels,
+                config.score_model.image_size,
+                config.score_model.image_size),
+            clip_denoised=config.sampling.clip_denoised,
+            model_kwargs=model_kwargs,
+            denoised_fn = denoised_fn if config.sampling.dynamic_sampling else None,
+            noise=init_image,
+            cond_fn=cond_fn if config.sampling.classifier_scale != 0 else None,
+            device=dist_util.dev(),
+            progress=config.sampling.progress,
+            eta=config.sampling.eta,
+            reconstruction=False,
+            sampling_progression_ratio = config.sampling.sampling_progression_ratio
+        )
+    sampling_progression = abduction_progression + diffusion_progression
+    return counterfactual_image, sampling_progression
+
 def get_models_functions(config, model, anti_causal_predictor):
     def cond_fn(x, t, y=None, **kwargs):
         assert y is not None
@@ -18,9 +60,7 @@ def get_models_functions(config, model, anti_causal_predictor):
                 logits = out[config.sampling.label_of_intervention]
             else:
                 logits = out
-            #log_probs = torch.nn.Sigmoid()(logits)
-            #selected = torch.nn.BCELoss(reduction='none')(log_probs, y.unsqueeze(1).to(th.float))#
-            
+                
             ## deal with
             y_new = torch.cat(2*[y[:y.size()[0]//2]]) if y.max() >= logits.size()[-1] else y
                 
@@ -28,17 +68,13 @@ def get_models_functions(config, model, anti_causal_predictor):
             selected =  log_probs[range(len(logits)), y_new.view(-1)]
             grad_log_conditional = torch.autograd.grad(selected.sum(), x_in)[0]
 
-            # grad_channel_mean = grad_log_conditional.mean(tuple(range(1, len(grad_log_conditional.size()))))
-            # scaling = (-selected / torch.exp(selected))
-            # print({"selected": selected, "scaling": scaling, "grad_channel_mean": grad_channel_mean})
             return grad_log_conditional * config.sampling.classifier_scale  # * scaling[:, None, None, None]
 
     def model_fn(x, t, y=None, conditioning_x=None, **kwargs):
-        # assert conditioning_x is not None
         y = (config.score_model.num_classes * torch.ones((config.sampling.batch_size,))).to(torch.long).to(dist_util.dev())
         return model(x, t, y = y, conditioning_x=conditioning_x)
-        # Create an classifier-free guidance sampling function
     
+    # Create an classifier-free guidance sampling function from Glide code
     def model_classifier_free_fn(x_t, ts, **kwargs):
         half = x_t[: len(x_t) // 2]
         combined = torch.cat([half, half], dim=0)
@@ -47,7 +83,7 @@ def get_models_functions(config, model, anti_causal_predictor):
         half_eps = uncond_eps + config.sampling.norm_cond_scale * (cond_eps - uncond_eps)
         eps = torch.cat([half_eps, half_eps], dim=0)
         return eps
-
+    # classifier-free guidance without increasing batch - trading off space for time
     def model_classifier_free_opt_fn(x_t, ts, **kwargs):
         ## conditional diffusion output
         cond_eps = model(x_t, ts, **kwargs)
@@ -66,6 +102,7 @@ def get_models_functions(config, model, anti_causal_predictor):
             + kwargs['image'] * (1 - kwargs['inpaint_mask'])
     )
 
+    # dynamic normalisation
     def clamp_to_spatial_quantile(x : torch.Tensor, **kwargs):
         p = 0.99
         b, c, *spatial = x.shape
