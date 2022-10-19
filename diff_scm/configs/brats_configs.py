@@ -16,12 +16,8 @@ def get_default_configs():
     config.data = data = ml_collections.ConfigDict()
     data.path = Path("/remote/rds/groups/idcom_imaging/data/Brain/BRATS/") / dataset
     data.sequence_translation = False # bool
-    data.healthy_data_percentage = 1.0  # float [0,1]; 1 for training using full data; None for training with healthy data only
-    #config.experiment_name = f"anomaly_diffusion_healthy_{data.healthy_data_percentage}_oversample_" + dataset
-    config.experiment_name = f"anomaly_diffusion_classfree_attention_run1_" + dataset
-    #config.experiment_name = f"anomaly_diffusion_CAM_" + dataset
-    #config.experiment_name = "anomaly_diffusion_healthy_only_train_" + dataset
-    #config.experiment_name = f"anomaly_diffusion_healthy_only_train_" + dataset
+    data.healthy_data_percentage = None  # float [0,1]; 1 for training using full data; None for training with healthy data only
+    config.experiment_name = f"anomaly_diffusion_healthy_only_train_" + dataset
     experiment_path = r"/home/s2086085/RDS/experiment_data/"
 
     ## Diffusion parameters
@@ -121,7 +117,7 @@ def get_default_configs():
     training_class.classifier_use_fp16 = score_model.use_fp16
 
     # score conditioning
-    score_model.class_cond = True
+    score_model.class_cond = False
     score_model.num_classes = 2
     score_model.classifier_free_cond = True
     score_model.image_level_cond = False

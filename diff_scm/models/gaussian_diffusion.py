@@ -720,14 +720,14 @@ class GaussianDiffusion:
             device = next(model.parameters()).device
         assert isinstance(shape, (tuple, list))
 
-        indices = list(range(self.num_timesteps))[::-1]
+        indices = list(range(self.num_timesteps)) # 0 -> T
         # start diffusion from a particular point or run it only up to a point
-        indices = indices[:int(len(indices)*sampling_progression_ratio)]
+        indices = indices[:int(len(indices)*sampling_progression_ratio)] # 0 -> L*T
 
-        if reverse:
-            indices = indices[::-1]
+        if not reverse: # not reverse == decoding, reverse == encoding
+            indices = indices[::-1] # L*T -> 0
             assert noise is not None, "Reverse DDIM requires input noise as an image"
-    
+
         if noise is not None:
             img = noise
         else:
@@ -813,8 +813,7 @@ class GaussianDiffusion:
         """
         if model_kwargs is None:
             model_kwargs = {}
-        '''if "conditioning_x" in model_kwargs.keys():
-            self.q_sample_conditioning(model_kwargs, t, train=True)'''
+
         if noise is None:
             noise = th.randn_like(x_start)
         x_t = self.q_sample(x_start, t, noise=noise)
