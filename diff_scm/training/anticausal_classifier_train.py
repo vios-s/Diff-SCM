@@ -201,7 +201,7 @@ def split_microbatches(microbatch, *args):
 if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="mnist or brats", type=str)
+    parser.add_argument("--dataset", help="mnist or brats", type=str, default='mnist')
     args = parser.parse_args()
     print(args.dataset)
     main(args)

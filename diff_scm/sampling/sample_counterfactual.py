@@ -8,6 +8,9 @@ import torch as th
 import torch.distributed as dist
 from pathlib import Path
 import sys
+
+from matplotlib import pyplot as plt
+
 sys.path.append(str(Path.cwd()))
 import argparse
 import random
@@ -60,6 +63,33 @@ def main(args):
 
     all_results = {k: [dic[k] for dic in all_results] for k in all_results[0]}
 
+    counter = all_results['counterfactual_sample']
+    orig = all_results['original'][0]['image']
+    x = 0
+
+    o1 = orig[x][0][:][:]
+    fig = plt.figure(figsize=(12., 12.))
+    plt.imshow(o1, cmap='gray')
+    plt.axis("off")
+    plt.show()
+
+    l1 = all_results['original'][0]['y']
+    print(l1[x])
+
+    c1 = counter[0][x][0][:][:]
+    fig = plt.figure(figsize=(12., 12.))
+    plt.imshow(c1, cmap='gray')
+    plt.axis("off")
+    plt.show()
+
+    diff = abs(c1) - abs(o1.numpy())
+    # print(diff)
+
+    fig = plt.figure(figsize=(12., 12.))
+    plt.imshow(diff, cmap='viridis')
+    plt.axis("off")
+    plt.show()
+
     if dist.get_rank() == 0:
         out_path = os.path.join(logger.get_dir(), f"samples.npz")
         logger.log(f"saving to {out_path}")
@@ -80,7 +110,7 @@ def reseed_random(seed):
 if __name__ == "__main__":
     
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", help="mnist or brats", type=str)
+    parser.add_argument("--dataset", help="mnist or brats", type=str, default='mnist')
     args = parser.parse_args()
     print(args.dataset)
     main(args)
