@@ -14,8 +14,8 @@ import matplotlib.pyplot as plt
 
 from diff_scm.utils import dist_util, logger
 from diff_scm.utils.fp16_util import MixedPrecisionTrainer
-from diff_scm.models.nn import update_ema
-from diff_scm.models.resample import LossAwareSampler, UniformSampler
+from diff_scm.modelsOld.nn import update_ema
+from diff_scm.modelsOld.resample import LossAwareSampler, UniformSampler
 
 
 # For ImageNet experiments, this was a good default value.

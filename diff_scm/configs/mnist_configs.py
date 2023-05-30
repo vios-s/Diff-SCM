@@ -20,7 +20,7 @@ def get_default_configs():
     experiment_path = r"../experiment_data/"
     ## Diffusion parameters
     config.diffusion = diffusion = ml_collections.ConfigDict()
-    diffusion.steps = 100 #1000
+    diffusion.steps = 1000
     diffusion.learn_sigma = False
     diffusion.sigma_small = False
     diffusion.noise_schedule = "linear"
@@ -73,7 +73,7 @@ def get_default_configs():
     training_score.microbatch = -1  # -1 disables microbatches
     training_score.ema_rate = "0.9999"  # comma-separated list of EMA values
     training_score.log_interval = 50
-    training_score.save_interval = 100#1000
+    training_score.save_interval = 1000
     training_score.resume_checkpoint = ""
     training_score.use_fp16 = score_model.use_fp16
     training_score.fp16_scale_growth = 1e-3
@@ -106,7 +106,7 @@ def get_default_configs():
     config.classifier.training = training_class = ml_collections.ConfigDict()
     training_class.noised = True
     training_class.adversarial_training = False
-    training_class.iterations = 100#3000
+    training_class.iterations = 3
     training_class.lr = 1e-4
     training_class.weight_decay = 0.0
     training_class.anneal_lr = False
@@ -123,7 +123,7 @@ def get_default_configs():
     sampling.clip_denoised = True
     sampling.dynamic_sampling = True
     sampling.progress = False
-    sampling.num_samples = 1#100
+    sampling.num_samples = 1
     sampling.batch_size = 100
     sampling.use_ddim = True
     sampling.reconstruction = True

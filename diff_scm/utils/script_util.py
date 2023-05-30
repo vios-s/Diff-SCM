@@ -2,9 +2,9 @@ import argparse
 import ml_collections
 
 from diff_scm.utils import dist_util
-from diff_scm.models import gaussian_diffusion as gd
-from diff_scm.models import unet
-from diff_scm.models.respace import SpacedDiffusion, space_timesteps
+from diff_scm.modelsOld import gaussian_diffusion as gd
+from diff_scm.modelsOld import unet
+from diff_scm.modelsOld.respace import SpacedDiffusion, space_timesteps
 
 
 def get_models_from_config(config):
@@ -30,6 +30,20 @@ def get_models_from_config(config):
     else:
         classifier = None
     return classifier, diffusion, model
+
+def get_classifier_from_model(config):
+    if config.sampling.classifier_scale != 0:
+        classifier = create_anti_causal_predictor(config)
+        classifier.load_state_dict(
+            dist_util.load_state_dict(config.sampling.classifier_path, map_location=dist_util.dev())
+        )
+        classifier.to(dist_util.dev())
+        if config.classifier.classifier_use_fp16:
+            classifier.convert_to_fp16()
+        classifier.eval()
+    else:
+        classifier = None
+    return classifier,
 
 
 def create_score_model(config: ml_collections.ConfigDict):

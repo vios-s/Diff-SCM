@@ -1,6 +1,6 @@
 """
 Helpers for various likelihood-based losses. These are ported from the original
-Ho et al. diffusion models codebase:
+Ho et al. diffusion modelsOld codebase:
 https://github.com/hojonathanho/diffusion/blob/1e0dceb3b3495bbe19116a5e1b3596cd0706c543/diffusion_tf/utils.py
 """
 
