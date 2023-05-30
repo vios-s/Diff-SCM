@@ -35,7 +35,7 @@ def main(args):
     classifier, diffusion, model = script_util.get_models_from_config(config)
     pytorch_total_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 
-    logger.log(f"Number of parameteres: {pytorch_total_params}")
+    logger.log(f"Number of parameters: {pytorch_total_params}")
 
     cond_fn, model_fn, model_classifier_free_fn, denoised_fn = get_models_functions(config, model, classifier)
 

@@ -20,7 +20,7 @@ def get_default_configs():
     experiment_path = r"../experiment_data/"
     ## Diffusion parameters
     config.diffusion = diffusion = ml_collections.ConfigDict()
-    diffusion.steps = 100 #1000
+    diffusion.steps = 1000
     diffusion.learn_sigma = False
     diffusion.sigma_small = False
     diffusion.noise_schedule = "linear"
@@ -64,7 +64,7 @@ def get_default_configs():
 
     # score model training
     config.score_model.training = training_score = ml_collections.ConfigDict()
-    training_score.iterations = 1#3e4
+    training_score.iterations = 100
     training_score.schedule_sampler = "uniform" 
     training_score.lr = 1e-4
     training_score.weight_decay = 0.01
@@ -73,7 +73,7 @@ def get_default_configs():
     training_score.microbatch = -1  # -1 disables microbatches
     training_score.ema_rate = "0.9999"  # comma-separated list of EMA values
     training_score.log_interval = 50
-    training_score.save_interval = 100#1000
+    training_score.save_interval = 50
     training_score.resume_checkpoint = ""
     training_score.use_fp16 = score_model.use_fp16
     training_score.fp16_scale_growth = 1e-3
@@ -106,7 +106,7 @@ def get_default_configs():
     config.classifier.training = training_class = ml_collections.ConfigDict()
     training_class.noised = True
     training_class.adversarial_training = False
-    training_class.iterations = 100#3000
+    training_class.iterations = 100
     training_class.lr = 1e-4
     training_class.weight_decay = 0.0
     training_class.anneal_lr = False
@@ -116,22 +116,22 @@ def get_default_configs():
     training_class.resume_checkpoint = False  # ""
     training_class.log_interval = 100
     training_class.eval_interval = 50
-    training_class.save_interval = 1000
+    training_class.save_interval = 50
     training_class.classifier_use_fp16 = score_model.use_fp16
 
     config.sampling = sampling = ml_collections.ConfigDict()
     sampling.clip_denoised = True
     sampling.dynamic_sampling = True
     sampling.progress = False
-    sampling.num_samples = 1#100
+    sampling.num_samples = 10
     sampling.batch_size = 100
     sampling.use_ddim = True
     sampling.reconstruction = True
     sampling.eta = 0.0
     sampling.image_conditional = False
     sampling.label_of_intervention = "y" 
-    sampling.model_path = experiment_path + config.experiment_name + "/score_train/model000020.pt"
-    sampling.classifier_path = experiment_path + config.experiment_name + "/classifier_train_" + "_".join(config.classifier.label) + "/model000099.pt"
+    sampling.model_path = experiment_path + config.experiment_name + "/score_train/model037000.pt"
+    sampling.classifier_path = experiment_path + config.experiment_name + "/classifier_train_" + "_".join(config.classifier.label) + "/model002999.pt"
     sampling.classifier_scale = 1.0
     sampling.target_class = 5    
     sampling.sampling_progression_ratio = 0.75

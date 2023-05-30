@@ -47,7 +47,7 @@ class TrainLoop:
             main_data_indentifier: str = "image",
             cond_dropout_rate: float = 0.0,
             conditioning_variable: str = "y",
-            iterations: int = 70e3,
+            iterations: int = 3e3,
     ):
         self.model = model
         self.diffusion = diffusion
@@ -168,9 +168,15 @@ class TrainLoop:
 
     def run_loop(self):
         while (
-                not self.lr_anneal_steps
-                or self.step + self.resume_step < self.iterations
+                # not self.lr_anneal_steps
+                # or self.step + self.resume_step < self.iterations
+            self.step < self.iterations
         ):
+            # print(self.step)
+            # print(self.resume_step)
+            # print(self.iterations)
+            # print(not self.lr_anneal_steps)
+
             data_dict = next(self.data)
             self.run_step(data_dict)
             if self.step % self.save_interval == 0:
