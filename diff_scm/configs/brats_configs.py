@@ -14,11 +14,11 @@ def get_default_configs():
     os.environ["CUDA_VISIBLE_DEVICES"] = use_gpus
     # data
     config.data = data = ml_collections.ConfigDict()
-    data.path = Path("/remote/rds/groups/idcom_imaging/data/Brain/BRATS/") / dataset
+    data.path = Path(r"../diff_scm/datasets/brats/") / config.dataset_name
     data.sequence_translation = False # bool
     data.healthy_data_percentage = None  # float [0,1]; 1 for training using full data; None for training with healthy data only
     config.experiment_name = f"anomaly_diffusion_healthy_only_train_" + dataset
-    experiment_path = r"/home/s2086085/RDS/experiment_data/"
+    experiment_path = r"../experiment_data/"
 
     ## Diffusion parameters
     config.diffusion = diffusion = ml_collections.ConfigDict()

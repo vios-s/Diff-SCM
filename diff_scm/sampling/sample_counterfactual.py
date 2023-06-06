@@ -28,7 +28,7 @@ def main(args):
     logger.configure(Path(config.experiment_name) / ("counterfactual_sampling_" + "_".join(config.classifier.label)))
 
     logger.log("creating loader...")
-    test_loader = loader.get_data_loader(args.dataset, config, split_set='test', generator = False) 
+    test_loader = loader.get_data_loader(args.dataset, config, split_set='test', generator = False)
 
     logger.log("creating model and diffusion...")
 
@@ -43,29 +43,28 @@ def main(args):
 
     all_results = []
     for i, data_dict in enumerate(test_loader):
-        
-        counterfactual_image, sampling_progression = estimate_counterfactual(config, 
-                                                diffusion, cond_fn, model_fn, 
-                                                model_classifier_free_fn, denoised_fn, 
+
+        counterfactual_image, sampling_progression = estimate_counterfactual(config,
+                                                diffusion, cond_fn, model_fn,
+                                                model_classifier_free_fn, denoised_fn,
                                                 data_dict)
-            
+
         results_per_sample = {"original": data_dict,
                               "counterfactual_sample" : counterfactual_image.cpu().numpy(),
                                                                 }
 
         if config.sampling.progress:
             results_per_sample.update({"diffusion_process": sampling_progression})
-                                                        
+
         all_results.append(results_per_sample)
 
         if config.sampling.num_samples is not None and ((i+1) * config.sampling.batch_size) >= config.sampling.num_samples:
-            break                
+            break
 
     all_results = {k: [dic[k] for dic in all_results] for k in all_results[0]}
-
-    counter = all_results['counterfactual_sample']
+    counter = all_results['counterfactual_sample'][0]
     orig = all_results['original'][0]['image']
-    x = 0
+    x = 11
 
     o1 = orig[x][0][:][:]
     fig = plt.figure(figsize=(12., 12.))
@@ -76,7 +75,7 @@ def main(args):
     l1 = all_results['original'][0]['y']
     print(l1[x])
 
-    c1 = counter[0][x][0][:][:]
+    c1 = counter[x][0][:][:]
     fig = plt.figure(figsize=(12., 12.))
     plt.imshow(c1, cmap='gray')
     plt.axis("off")
@@ -85,10 +84,30 @@ def main(args):
     diff = abs(c1) - abs(o1.numpy())
     # print(diff)
 
-    fig = plt.figure(figsize=(12., 12.))
-    plt.imshow(diff, cmap='viridis')
-    plt.axis("off")
-    plt.show()
+    # fig = plt.figure(figsize=(12., 12.))
+    # plt.imshow(diff, cmap='viridis')
+    # plt.axis("off")
+    # plt.show()
+
+    # all_results['original'][0].pop('y')
+    # sample_list = [(v[:, 0] for (k, v) in x[0]) for x in all_results.items()]
+    # a=all_results['original'][0]
+    # b=a['image'][:,1]
+    # print(b)
+    # a = all_results['original'][0]
+    # b = a['y'][:, 0]
+    # print(b)
+    # a = all_results['counterfactual_sample'][0]
+    # b = a['image'][:, 0]
+    # print(b)
+    # sample_list = np.einsum("ibwh -> bihw", sample_list)
+    # sample_list = sample_list[:16]
+    # grid = np.concatenate(np.concatenate(sample_list, axis=2), axis=0)
+    #
+    # fig = plt.figure(figsize=(12., 40.))
+    # plt.imshow(grid, cmap='gray')
+    # plt.axis("off")
+    # plt.show()
 
     if dist.get_rank() == 0:
         out_path = os.path.join(logger.get_dir(), f"samples.npz")
@@ -108,7 +127,7 @@ def reseed_random(seed):
     th.backends.cudnn.benchmark = False
 
 if __name__ == "__main__":
-    
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", help="mnist or brats", type=str, default='mnist')
     args = parser.parse_args()

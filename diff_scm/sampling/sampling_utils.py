@@ -130,7 +130,7 @@ def get_input_data(config, data_dict):
 
     model_kwargs = {k: v.to(dist_util.dev()) for k, v in data_dict.items()}
     model_kwargs["y"] = (config.sampling.target_class * torch.ones((config.sampling.batch_size,))).to(torch.long).to(dist_util.dev())
-    
+    print(model_kwargs)
     init_image = data_dict['image'].to(dist_util.dev())
 
     return model_kwargs,init_image

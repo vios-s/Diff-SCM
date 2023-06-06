@@ -693,7 +693,7 @@ class GaussianDiffusion:
             else:
                 final = sample
 
-        final_output = "sample"# if denoised_fn is None else "pred_xstart"
+        final_output = "sample" if denoised_fn is None else "pred_xstart"
         return (final[-1][final_output], final) if progress else (final[final_output], [final])
 
     def ddim_sample_loop_progressive(

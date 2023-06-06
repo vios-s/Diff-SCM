@@ -123,18 +123,18 @@ def get_default_configs():
     sampling.clip_denoised = True
     sampling.dynamic_sampling = True
     sampling.progress = False
-    sampling.num_samples = 10
+    sampling.num_samples = 100
     sampling.batch_size = 100
     sampling.use_ddim = True
     sampling.reconstruction = True
-    sampling.eta = 0.0
+    sampling.eta = 0
     sampling.image_conditional = False
     sampling.label_of_intervention = "y" 
     sampling.model_path = experiment_path + config.experiment_name + "/score_train/model037000.pt"
     sampling.classifier_path = experiment_path + config.experiment_name + "/classifier_train_" + "_".join(config.classifier.label) + "/model002999.pt"
     sampling.classifier_scale = 1.0
-    sampling.target_class = 5    
-    sampling.sampling_progression_ratio = 0.75
+    sampling.target_class = 0
+    sampling.sampling_progression_ratio = .75
     config.seed = 42
     config.device = torch.device('cuda:0') if torch.cuda.is_available() else torch.device('cpu')
 
