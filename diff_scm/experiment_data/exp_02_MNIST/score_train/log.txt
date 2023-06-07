@@ -1,0 +1,31 @@
+Logging to /media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/experiment_data/exp_02_MNIST/score_train
+creating model and diffusion...
+Model number of parameters 1178177
+creating data loader...
+training...
+saving model 0...
+saving model 0.9999...
+-------------------------
+| grad_norm  | 4.41     |
+| param_norm | 52.1     |
+| samples    | 256      |
+| step       | 0        |
+| train_loss | 0.998    |
+| train_mse  | 0.998    |
+| val_loss   | 0.994    |
+| val_mse    | 0.994    |
+-------------------------
+saving model 0...
+saving model 0.9999...
+-------------------------
+| grad_norm  | 4.4      |
+| param_norm | 52.1     |
+| samples    | 1.31e+04 |
+| step       | 50       |
+| train_loss | 0.794    |
+| train_mse  | 0.794    |
+| val_loss   | 0.578    |
+| val_mse    | 0.578    |
+-------------------------
+saving model 0...
+saving model 0.9999...
