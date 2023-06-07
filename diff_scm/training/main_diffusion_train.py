@@ -7,7 +7,7 @@ sys.path.append(str(Path.cwd()))
 import argparse
 from diff_scm.configs import get_config
 from diff_scm.utils import logger, dist_util
-from diff_scm.models.resample import create_named_schedule_sampler
+from diff_scm.modelsOld.resample import create_named_schedule_sampler
 from diff_scm.utils.script_util import create_gaussian_diffusion, create_score_model
 from diff_scm.training.train_util import TrainLoop
 from diff_scm.datasets import loader

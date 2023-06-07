@@ -8,7 +8,7 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 from diff_scm.utils.fp16_util import convert_module_to_f16, convert_module_to_f32
-from diff_scm.models.nn import avg_pool_nd, conv_nd, linear, normalization, timestep_embedding, zero_module
+from diff_scm.modelsOld.nn import avg_pool_nd, conv_nd, linear, normalization, timestep_embedding, zero_module
 
 class AttentionPool2d(nn.Module):
     """

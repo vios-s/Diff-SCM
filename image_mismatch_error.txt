@@ -1,0 +1,279 @@
+/home/fvamosi/micromamba/envs/diffscm_gpu/bin/python /media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/sampling/sample_counterfactual.py
+/home/fvamosi/micromamba/envs/diffscm_gpu/lib/python3.8/site-packages/scipy/__init__.py:138: UserWarning: A NumPy version >=1.16.5 and <1.23.0 is required for this version of SciPy (detected version 1.24.1)
+  warnings.warn(f"A NumPy version >={np_minversion} and <{np_maxversion} is required for this version of "
+mnist
+Logging to /media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/experiment_data/exp_02_MNIST/counterfactual_sampling_class
+creating loader...
+creating model and diffusion...
+EncoderUNetModel(
+  (time_embed): Sequential(
+    (0): Linear(in_features=32, out_features=128, bias=True)
+    (1): SiLU()
+    (2): Linear(in_features=128, out_features=128, bias=True)
+  )
+  (input_blocks): ModuleList(
+    (0): TimestepEmbedSequential(
+      (0): Conv2d(1, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+    )
+    (1): TimestepEmbedSequential(
+      (0): ResBlock(
+        (in_layers): Sequential(
+          (0): GroupNorm32(32, 32, eps=1e-05, affine=True)
+          (1): Identity()
+          (2): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (h_upd): Identity()
+        (x_upd): Identity()
+        (emb_layers): Sequential(
+          (0): SiLU()
+          (1): Linear(in_features=128, out_features=64, bias=True)
+        )
+        (out_layers): Sequential(
+          (0): GroupNorm32(32, 32, eps=1e-05, affine=True)
+          (1): SiLU()
+          (2): Dropout(p=0, inplace=False)
+          (3): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (skip_connection): Identity()
+      )
+    )
+    (2): TimestepEmbedSequential(
+      (0): ResBlock(
+        (in_layers): Sequential(
+          (0): GroupNorm32(32, 32, eps=1e-05, affine=True)
+          (1): Identity()
+          (2): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (h_upd): Downsample(
+          (op): AvgPool2d(kernel_size=2, stride=2, padding=0)
+        )
+        (x_upd): Downsample(
+          (op): AvgPool2d(kernel_size=2, stride=2, padding=0)
+        )
+        (emb_layers): Sequential(
+          (0): SiLU()
+          (1): Linear(in_features=128, out_features=64, bias=True)
+        )
+        (out_layers): Sequential(
+          (0): GroupNorm32(32, 32, eps=1e-05, affine=True)
+          (1): SiLU()
+          (2): Dropout(p=0, inplace=False)
+          (3): Conv2d(32, 32, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (skip_connection): Identity()
+      )
+    )
+    (3): TimestepEmbedSequential(
+      (0): ResBlock(
+        (in_layers): Sequential(
+          (0): GroupNorm32(32, 32, eps=1e-05, affine=True)
+          (1): Identity()
+          (2): Conv2d(32, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (h_upd): Identity()
+        (x_upd): Identity()
+        (emb_layers): Sequential(
+          (0): SiLU()
+          (1): Linear(in_features=128, out_features=128, bias=True)
+        )
+        (out_layers): Sequential(
+          (0): GroupNorm32(32, 64, eps=1e-05, affine=True)
+          (1): SiLU()
+          (2): Dropout(p=0, inplace=False)
+          (3): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (skip_connection): Conv2d(32, 64, kernel_size=(1, 1), stride=(1, 1))
+      )
+    )
+    (4): TimestepEmbedSequential(
+      (0): ResBlock(
+        (in_layers): Sequential(
+          (0): GroupNorm32(32, 64, eps=1e-05, affine=True)
+          (1): Identity()
+          (2): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (h_upd): Downsample(
+          (op): AvgPool2d(kernel_size=2, stride=2, padding=0)
+        )
+        (x_upd): Downsample(
+          (op): AvgPool2d(kernel_size=2, stride=2, padding=0)
+        )
+        (emb_layers): Sequential(
+          (0): SiLU()
+          (1): Linear(in_features=128, out_features=128, bias=True)
+        )
+        (out_layers): Sequential(
+          (0): GroupNorm32(32, 64, eps=1e-05, affine=True)
+          (1): SiLU()
+          (2): Dropout(p=0, inplace=False)
+          (3): Conv2d(64, 64, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (skip_connection): Identity()
+      )
+    )
+    (5): TimestepEmbedSequential(
+      (0): ResBlock(
+        (in_layers): Sequential(
+          (0): GroupNorm32(32, 64, eps=1e-05, affine=True)
+          (1): Identity()
+          (2): Conv2d(64, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (h_upd): Identity()
+        (x_upd): Identity()
+        (emb_layers): Sequential(
+          (0): SiLU()
+          (1): Linear(in_features=128, out_features=256, bias=True)
+        )
+        (out_layers): Sequential(
+          (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+          (1): SiLU()
+          (2): Dropout(p=0, inplace=False)
+          (3): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (skip_connection): Conv2d(64, 128, kernel_size=(1, 1), stride=(1, 1))
+      )
+    )
+    (6): TimestepEmbedSequential(
+      (0): ResBlock(
+        (in_layers): Sequential(
+          (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+          (1): Identity()
+          (2): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (h_upd): Downsample(
+          (op): AvgPool2d(kernel_size=2, stride=2, padding=0)
+        )
+        (x_upd): Downsample(
+          (op): AvgPool2d(kernel_size=2, stride=2, padding=0)
+        )
+        (emb_layers): Sequential(
+          (0): SiLU()
+          (1): Linear(in_features=128, out_features=256, bias=True)
+        )
+        (out_layers): Sequential(
+          (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+          (1): SiLU()
+          (2): Dropout(p=0, inplace=False)
+          (3): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (skip_connection): Identity()
+      )
+    )
+    (7): TimestepEmbedSequential(
+      (0): ResBlock(
+        (in_layers): Sequential(
+          (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+          (1): Identity()
+          (2): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (h_upd): Identity()
+        (x_upd): Identity()
+        (emb_layers): Sequential(
+          (0): SiLU()
+          (1): Linear(in_features=128, out_features=256, bias=True)
+        )
+        (out_layers): Sequential(
+          (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+          (1): SiLU()
+          (2): Dropout(p=0, inplace=False)
+          (3): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+        )
+        (skip_connection): Identity()
+      )
+    )
+  )
+  (middle_block): TimestepEmbedSequential(
+    (0): ResBlock(
+      (in_layers): Sequential(
+        (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+        (1): Identity()
+        (2): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (h_upd): Identity()
+      (x_upd): Identity()
+      (emb_layers): Sequential(
+        (0): SiLU()
+        (1): Linear(in_features=128, out_features=256, bias=True)
+      )
+      (out_layers): Sequential(
+        (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+        (1): SiLU()
+        (2): Dropout(p=0, inplace=False)
+        (3): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (skip_connection): Identity()
+    )
+    (1): AttentionBlock(
+      (norm): GroupNorm32(32, 128, eps=1e-05, affine=True)
+      (qkv): Conv1d(128, 384, kernel_size=(1,), stride=(1,))
+      (attention): QKVAttention()
+      (encoder_kv): Conv1d(128, 256, kernel_size=(1,), stride=(1,))
+      (proj_out): Conv1d(128, 128, kernel_size=(1,), stride=(1,))
+    )
+    (2): ResBlock(
+      (in_layers): Sequential(
+        (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+        (1): Identity()
+        (2): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (h_upd): Identity()
+      (x_upd): Identity()
+      (emb_layers): Sequential(
+        (0): SiLU()
+        (1): Linear(in_features=128, out_features=256, bias=True)
+      )
+      (out_layers): Sequential(
+        (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+        (1): SiLU()
+        (2): Dropout(p=0, inplace=False)
+        (3): Conv2d(128, 128, kernel_size=(3, 3), stride=(1, 1), padding=(1, 1))
+      )
+      (skip_connection): Identity()
+    )
+  )
+  (out): Sequential(
+    (0): GroupNorm32(32, 128, eps=1e-05, affine=True)
+    (1): SiLU()
+    (2): AttentionPool2d(
+      (qkv_proj): Conv1d(128, 384, kernel_size=(1,), stride=(1,))
+      (c_proj): Conv1d(128, 10, kernel_size=(1,), stride=(1,))
+      (attention): QKVAttention()
+    )
+  )
+)
+Number of parameteres: 674834720
+sampling...
+Traceback (most recent call last):
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/sampling/sample_counterfactual.py", line 163, in <module>
+    main(args)
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/sampling/sample_counterfactual.py", line 85, in main
+    counterfactual_image, sampling_progression = estimate_counterfactual(config,
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/sampling/sampling_utils.py", line 14, in estimate_counterfactual
+    exogenous_noise, abduction_progression = diffusion.ddim_sample_loop(
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/diffusion/gaussian_diffusion.py", line 618, in ddim_sample_loop
+    for sample in self.ddim_sample_loop_progressive(
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/diffusion/gaussian_diffusion.py", line 669, in ddim_sample_loop_progressive
+    out = self.ddim_sample(
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/diffusion/gaussian_diffusion.py", line 528, in ddim_sample
+    out = self.p_mean_variance(
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/diffusion/respace.py", line 92, in p_mean_variance
+    return super().p_mean_variance(self._wrap_model(model), *args, **kwargs)
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/diffusion/gaussian_diffusion.py", line 279, in p_mean_variance
+    model_output = model(x, t, **model_kwargs)
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/diffusion/respace.py", line 129, in __call__
+    return self.model(x, new_ts, **kwargs)
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/sampling/sampling_utils.py", line 75, in model_fn
+    return model(x, t, y = y)#, conditioning_x=conditioning_x)
+  File "/home/fvamosi/micromamba/envs/diffscm_gpu/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/media/data/finn/PycharmProjects/Diff-SCM2/diff_scm/models.py", line 240, in forward
+    x = self.x_embedder(x) + self.pos_embed  # (N, T, D), where T = H * W / patch_size ** 2
+  File "/home/fvamosi/micromamba/envs/diffscm_gpu/lib/python3.8/site-packages/torch/nn/modules/module.py", line 1501, in _call_impl
+    return forward_call(*args, **kwargs)
+  File "/home/fvamosi/micromamba/envs/diffscm_gpu/lib/python3.8/site-packages/timm/layers/patch_embed.py", line 66, in forward
+    _assert(H == self.img_size[0], f"Input image height ({H}) doesn't match model ({self.img_size[0]}).")
+  File "/home/fvamosi/micromamba/envs/diffscm_gpu/lib/python3.8/site-packages/torch/__init__.py", line 1209, in _assert
+    assert condition, message
+AssertionError: Input image height (28) doesn't match model (32).
+
+Process finished with exit code 1

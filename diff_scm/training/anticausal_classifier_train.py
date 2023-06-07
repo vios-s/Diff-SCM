@@ -20,7 +20,7 @@ from diff_scm.configs import get_config
 from diff_scm.utils import logger, dist_util
 from diff_scm.utils.script_util import create_anti_causal_predictor, create_gaussian_diffusion
 from diff_scm.utils.fp16_util import MixedPrecisionTrainer
-from diff_scm.models.resample import create_named_schedule_sampler
+from diff_scm.modelsOld.resample import create_named_schedule_sampler
 from diff_scm.training.train_util import parse_resume_step_from_filename, log_loss_dict
 from diff_scm.datasets import loader
 

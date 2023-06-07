@@ -25,8 +25,8 @@ def estimate_counterfactual(config, diffusion, cond_fn, model_fn, model_classifi
             device=dist_util.dev(),
             progress=config.sampling.progress,
             eta=config.sampling.eta,
-            reconstruction=True,
-            sampling_progression_ratio = config.sampling.sampling_progression_ratio
+            # reconstruction=True,
+            # sampling_progression_ratio = config.sampling.sampling_progression_ratio
         )
     init_image = exogenous_noise
     # DDIM diffusion inference  with conditioning (intervention), starting from a latent image instead of random noise
@@ -44,8 +44,8 @@ def estimate_counterfactual(config, diffusion, cond_fn, model_fn, model_classifi
             device=dist_util.dev(),
             progress=config.sampling.progress,
             eta=config.sampling.eta,
-            reconstruction=False,
-            sampling_progression_ratio = config.sampling.sampling_progression_ratio
+            # reconstruction=False,
+            # sampling_progression_ratio = config.sampling.sampling_progression_ratio
         )
     sampling_progression = abduction_progression + diffusion_progression
     return counterfactual_image, sampling_progression
@@ -72,7 +72,7 @@ def get_models_functions(config, model, anti_causal_predictor):
 
     def model_fn(x, t, y=None, conditioning_x=None, **kwargs):
         y = (config.score_model.num_classes * torch.ones((config.sampling.batch_size,))).to(torch.long).to(dist_util.dev())
-        return model(x, t, y = y, conditioning_x=conditioning_x)
+        return model(x, t, y = y)#, conditioning_x=conditioning_x)
     
     # Create an classifier-free guidance sampling function from Glide code
     def model_classifier_free_fn(x_t, ts, **kwargs):
